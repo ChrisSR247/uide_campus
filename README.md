@@ -56,9 +56,9 @@ Acceso a hardware
 
 Esto permite:
 
-✔ Escalabilidad  
-✔ Bajo acoplamiento  
-✔ Facilidad de mantenimiento  
+- Escalabilidad
+- Bajo acoplamiento
+- Facilidad de mantenimiento  
 
 ---
 
@@ -81,4 +81,4 @@ https://youtube.com/shorts/6gMlVx-8Y3A?si=TED1tgu6X60XXwOp
 
 ---
 
-## 📂 Estructura del Proyecto
+
