@@ -80,5 +80,19 @@ El sistema optimiza consumo mediante:
 https://youtube.com/shorts/6gMlVx-8Y3A?si=TED1tgu6X60XXwOp
 
 ---
+# UIDE Campus - Optimización Geoespacial 
+
+Este repositorio contiene la versión refactorizada de la aplicación de tracking del campus, enfocada en **Software Verde** y eficiencia de recursos.
+
+##  Mejoras Realizadas
+
+1. **Gestión de Estados Avanzada:** Se eliminó `setState` y se implementó **Riverpod**. Esto evita "rebuilds" innecesarios de la interfaz, reduciendo el consumo de batería.
+2. **Eficiencia en GPS:** Se configuró un `distanceFilter` de 10 metros para evitar que el sensor GPS trabaje cuando el usuario está estático.
+3. **Lazy Loading de Modelos 3D:** Lógica implementada para que los modelos `.glb` solo se descarguen si el usuario está a < 50m del punto de interés.
+
+##  Cómo ejecutar el proyecto
+1. Clonar el repositorio: `git clone https://github.com/ChrisSR247/uide_campus.git`
+2. Instalar dependencias: `flutter pub get`
+3. Ejecutar: `flutter run`
 
 
