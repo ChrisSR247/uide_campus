@@ -1,21 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:provider/provider.dart';
-import 'package:uide_campus_cleaner/providers/vision_provider.dart';
-
-import 'providers/location_provider.dart';
 import 'screens/map_screen.dart';
-import 'screens/permission_error_screen.dart';
-import 'providers/vision_provider.dart';
 
 void main() {
   runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => LocationProvider()),
-        ChangeNotifierProvider(create: (_) => VisionProvider()),
-      ],
-      child: const MyApp(),
+    const ProviderScope(
+      child: MyApp(),
     ),
   );
 }
@@ -35,7 +26,6 @@ class MyApp extends StatelessWidget {
 
 class PermissionGate extends StatefulWidget {
   const PermissionGate({super.key});
-
   @override
   State<PermissionGate> createState() => _PermissionGateState();
 }
@@ -43,7 +33,6 @@ class PermissionGate extends StatefulWidget {
 class _PermissionGateState extends State<PermissionGate> {
   bool loading = true;
   bool granted = false;
-  String error = "";
 
   @override
   void initState() {
@@ -52,32 +41,19 @@ class _PermissionGateState extends State<PermissionGate> {
   }
 
   Future<void> checkPermissions() async {
-    final location = await Permission.locationWhenInUse.request();
-    final camera = await Permission.camera.request();
+    final loc = await Permission.locationWhenInUse.request();
+    final cam = await Permission.camera.request();
 
-    if (location.isGranted && camera.isGranted) {
-      granted = true;
-    } else {
-      error =
-          "Esta aplicación necesita acceso a ubicación y cámara para detectar focos de contaminación y realizar la intervención en realidad aumentada.";
-    }
-
-    setState(() => loading = false);
+    setState(() {
+      granted = loc.isGranted && cam.isGranted;
+      loading = false;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    if (loading) {
-      return const Scaffold(
-        backgroundColor: Colors.black,
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    if (!granted) {
-      return PermissionErrorScreen(message: error);
-    }
-
+    if (loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (!granted) return const Scaffold(body: Center(child: Text("Permisos necesarios")));
     return const MapScreen();
   }
 }

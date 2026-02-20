@@ -1,110 +1,92 @@
 import 'dart:async';
-import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-class LocationProvider extends ChangeNotifier {
-  // 👉 Punto de crisis (el mismo del mapa)
-  final LatLng target = const LatLng(-4.007021, -79.204329);
+// Punto de crisis UIDE
+const LatLng crisisPoint = LatLng(-4.007021, -79.204329);
 
-  Position? currentPosition;
+class LocationState {
+  final double distance;
+  final double accuracy;
+  final int gpsRequests;
+  final bool isModelReady; // Lazy Loading logic
+  final LocationAccuracy currentAccuracy;
 
-  double distance = 999;
-  double accuracy = 999;
+  LocationState({
+    this.distance = 999,
+    this.accuracy = 999,
+    this.gpsRequests = 0,
+    this.isModelReady = false,
+    this.currentAccuracy = LocationAccuracy.medium,
+  });
 
-  StreamSubscription<Position>? _sub;
+  LocationState copyWith({
+    double? distance,
+    double? accuracy,
+    int? gpsRequests,
+    bool? isModelReady,
+    LocationAccuracy? currentAccuracy,
+  }) {
+    return LocationState(
+      distance: distance ?? this.distance,
+      accuracy: accuracy ?? this.accuracy,
+      gpsRequests: gpsRequests ?? this.gpsRequests,
+      isModelReady: isModelReady ?? this.isModelReady,
+      currentAccuracy: currentAccuracy ?? this.currentAccuracy,
+    );
+  }
+}
 
-  int gpsRequests = 0;
+class LocationNotifier extends StateNotifier<LocationState> {
+  LocationNotifier() : super(LocationState());
 
-  bool get canUseCamera => accuracy <= 20;
-  LocationAccuracy _currentAccuracy = LocationAccuracy.medium;
-
-  // ----------------------------------------------------
+  StreamSubscription<Position>? _subscription;
 
   void startTracking() {
-    LocationSettings settings = const LocationSettings(
-      accuracy: LocationAccuracy.medium,
-      distanceFilter: 5,
-    );
-
-    _sub = Geolocator.getPositionStream(locationSettings: settings).listen((
-      pos,
-    ) {
-      gpsRequests++;
-
-      currentPosition = pos;
-      accuracy = pos.accuracy;
-
-      distance = Geolocator.distanceBetween(
-        pos.latitude,
-        pos.longitude,
-        target.latitude,
-        target.longitude,
-      );
-
-      _updateTrackingMode();
-
-      notifyListeners();
-    });
+    _initStream(LocationAccuracy.medium, 5);
   }
 
-  // ----------------------------------------------------
-  // ahorro de batería según distancia
-
-  void _updateTrackingMode() {
-    if (distance > 100) {
-      _restartStream(
-        const LocationSettings(
-          accuracy: LocationAccuracy.low,
-          distanceFilter: 20,
-        ),
-      );
-    } else if (distance > 20) {
-      _restartStream(
-        const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          distanceFilter: 5,
-        ),
-      );
-    } else {
-      _restartStream(
-        const LocationSettings(
-          accuracy: LocationAccuracy.bestForNavigation,
-          distanceFilter: 1,
-        ),
-      );
-    }
-  }
-
-  void _restartStream(LocationSettings settings) async {
-    if (settings.accuracy == _currentAccuracy) return;
-
-    _currentAccuracy = settings.accuracy;
-
-    await _sub?.cancel();
-
-    _sub = Geolocator.getPositionStream(locationSettings: settings).listen((
-      pos,
-    ) {
-      gpsRequests++;
-
-      currentPosition = pos;
-      accuracy = pos.accuracy;
-
-      distance = Geolocator.distanceBetween(
-        pos.latitude,
-        pos.longitude,
-        target.latitude,
-        target.longitude,
+  void _initStream(LocationAccuracy acc, int filter) {
+    _subscription?.cancel();
+    
+    _subscription = Geolocator.getPositionStream(
+      locationSettings: LocationSettings(
+        accuracy: acc,
+        distanceFilter: filter,
+      ),
+    ).listen((pos) {
+      final d = Geolocator.distanceBetween(
+        pos.latitude, pos.longitude,
+        crisisPoint.latitude, crisisPoint.longitude,
       );
 
-      notifyListeners();
+      state = state.copyWith(
+        distance: d,
+        accuracy: pos.accuracy,
+        gpsRequests: state.gpsRequests + 1,
+        isModelReady: d < 50, // Solo se activa a menos de 50 metros
+        currentAccuracy: acc,
+      );
+
+      // Lógica de Software Verde: Ajuste dinámico de potencia
+      if (d > 100 && acc != LocationAccuracy.low) {
+        _initStream(LocationAccuracy.low, 20);
+      } else if (d <= 100 && d > 20 && acc != LocationAccuracy.high) {
+        _initStream(LocationAccuracy.high, 5);
+      } else if (d <= 20 && acc != LocationAccuracy.bestForNavigation) {
+        _initStream(LocationAccuracy.bestForNavigation, 1);
+      }
     });
   }
 
   @override
   void dispose() {
-    _sub?.cancel();
+    _subscription?.cancel();
     super.dispose();
   }
 }
+
+final locationProvider = StateNotifierProvider<LocationNotifier, LocationState>((ref) {
+  return LocationNotifier();
+});

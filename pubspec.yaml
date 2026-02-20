@@ -39,6 +39,7 @@ dependencies:
   tflite_flutter: ^0.10.4
   image: ^4.1.7
   ar_flutter_plugin: ^0.7.3
+  flutter_riverpod: ^2.4.9
 
 
 
